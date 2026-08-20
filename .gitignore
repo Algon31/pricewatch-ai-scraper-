@@ -1,18 +1,51 @@
 # Dependencies
 node_modules/
+package-lock.json.bak
+
+# Python (if applicable)
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 venv/
 .venv/
 env/
 
-# Environment variables
+# Environment variables & secrets
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!*.env.example
 
-# Logs & temp
-*.log
-scratch/
+# Build outputs
 dist/
+dist-ssr/
 build/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+
+# IDE & Editor files
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 .DS_Store
+Thumbs.db
+
+# Antigravity temporary directories
+scratch/
+.system_generated/
