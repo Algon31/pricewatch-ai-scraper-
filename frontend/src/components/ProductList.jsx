@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, RefreshCw, ChevronRight, Layers } from 'lucide-react';
+import { Package, RefreshCw, ChevronRight, Database } from 'lucide-react';
 
 export default function ProductList({
   products = [],
@@ -15,63 +15,74 @@ export default function ProductList({
   };
 
   return (
-    <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-6 shadow-xl h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bw-panel rounded-2xl p-6 h-full flex flex-col space-y-4">
+      <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
         <div className="flex items-center gap-2">
-          <Layers className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
-            Tracked Products ({products.length})
+          <Database className="w-4 h-4 text-white" />
+          <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+            Archived Snapshots ({products.length})
           </h3>
         </div>
         <button
           onClick={onRefresh}
           disabled={loading}
-          className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-50 cursor-pointer"
+          className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800 transition disabled:opacity-50 cursor-pointer"
           title="Refresh products list"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {products.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
-          <Package className="w-10 h-10 mb-2 text-slate-500" />
-          <p className="text-sm font-medium text-slate-300">No tracked products yet</p>
-          <p className="text-xs text-slate-500 mt-1">
-            Submit an Amazon URL above to start price tracking.
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-neutral-500 font-mono text-xs">
+          <Package className="w-8 h-8 mb-2 text-neutral-600" />
+          <p className="text-neutral-300 font-semibold">No archived products</p>
+          <p className="text-[11px] text-neutral-500 mt-1">
+            Scraped products will automatically appear in this MongoDB catalog.
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5 overflow-y-auto max-h-[500px] pr-1">
+        <div className="space-y-2 overflow-y-auto max-h-[460px] pr-1">
           {products.map((prod) => {
             const isSelected = prod._id === selectedProductId;
             return (
               <div
                 key={prod._id}
                 onClick={() => onSelectProduct(prod._id)}
-                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer group ${
+                className={`p-3.5 rounded-xl border text-left transition cursor-pointer group ${
                   isSelected
-                    ? 'bg-indigo-600/20 border-indigo-500/80 shadow-md'
-                    : 'bg-slate-900/60 border-slate-700/50 hover:bg-slate-700/40 hover:border-slate-600'
+                    ? 'bg-white text-black border-white shadow-sm'
+                    : 'bg-black border-neutral-800 hover:border-neutral-700'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-xs font-medium text-slate-200 line-clamp-2 group-hover:text-white transition-colors">
-                    {prod.productTitle || 'Amazon Product'}
-                  </h4>
+                  <div>
+                    {prod.source && (
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border block w-fit mb-1 ${
+                        isSelected ? 'bg-black text-white border-black' : 'bg-neutral-900 text-neutral-400 border-neutral-800'
+                      }`}>
+                        {prod.source}
+                      </span>
+                    )}
+                    <h4 className={`text-xs font-semibold line-clamp-1 transition ${
+                      isSelected ? 'text-black' : 'text-neutral-200 group-hover:text-white'
+                    }`}>
+                      {prod.productTitle || 'Tracked Product'}
+                    </h4>
+                  </div>
                   <ChevronRight
-                    className={`w-4 h-4 flex-shrink-0 mt-0.5 transition-transform ${
-                      isSelected ? 'text-indigo-400 translate-x-0.5' : 'text-slate-500 group-hover:text-slate-300'
+                    className={`w-3.5 h-3.5 flex-shrink-0 mt-1 transition-transform ${
+                      isSelected ? 'text-black translate-x-0.5' : 'text-neutral-500 group-hover:text-white'
                     }`}
                   />
                 </div>
 
-                <div className="mt-2.5 flex items-center justify-between text-xs">
-                  <span className="font-bold text-white">
+                <div className="mt-2 flex items-center justify-between text-xs font-mono">
+                  <span className={`font-bold ${isSelected ? 'text-black' : 'text-white'}`}>
                     {formatCurrency(prod.currentPrice, prod.currency)}
                   </span>
-                  <span className="text-[10px] text-slate-400">
-                    {prod.priceHistory ? `${prod.priceHistory.length} history point(s)` : ''}
+                  <span className={`text-[10px] ${isSelected ? 'text-neutral-600' : 'text-neutral-500'}`}>
+                    {prod.priceHistory ? `${prod.priceHistory.length} record(s)` : ''}
                   </span>
                 </div>
               </div>

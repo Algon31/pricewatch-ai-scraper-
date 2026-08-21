@@ -1,168 +1,363 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
-import ScrapeForm from './components/ScrapeForm';
+import DashboardView from './components/DashboardView';
+import MonitorDetailView from './components/MonitorDetailView';
+import CompareForm from './components/CompareForm';
+import ComparisonSummary from './components/ComparisonSummary';
+import CompetitorGrid from './components/CompetitorGrid';
+import PriceComparisonChart from './components/PriceComparisonChart';
 import ScraperHealth from './components/ScraperHealth';
-import ProductCard from './components/ProductCard';
-import PriceChangeCard from './components/PriceChangeCard';
-import PriceHistoryChart from './components/PriceHistoryChart';
-import ProductList from './components/ProductList';
-import { scrapeProduct, getProducts, getProductById } from './api/config';
-import { Sparkles, Layers } from 'lucide-react';
+import {
+  getMonitors,
+  getMonitorById,
+  createMonitor,
+  checkMonitor,
+  deleteMonitor,
+  compareProducts
+} from './api/config';
+import { Sparkles, PlusCircle, ArrowLeft, GitCompare } from 'lucide-react';
 
 export default function App() {
-  const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [priceChange, setPriceChange] = useState(null);
-  const [loadingScrape, setLoadingScrape] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [error, setError] = useState('');
+  // Navigation: 'dashboard' (default), 'compare', 'add-monitor', 'detail'
+  const [currentView, setCurrentView] = useState('dashboard');
+
+  // Monitors state
+  const [monitors, setMonitors] = useState([]);
+  const [recentChangesCount, setRecentChangesCount] = useState(0);
+  const [loadingMonitors, setLoadingMonitors] = useState(false);
+  const [selectedMonitorId, setSelectedMonitorId] = useState(null);
+  const [selectedMonitorData, setSelectedMonitorData] = useState(null);
+  const [loadingMonitorDetail, setLoadingMonitorDetail] = useState(false);
+
+  // Monitor Check state
+  const [checkingMonitorId, setCheckingMonitorId] = useState(null);
+  const [checkResultsMap, setCheckResultsMap] = useState({});
+  const [lastCheckResult, setLastCheckResult] = useState(null);
+
+  // One-time Comparison State
+  const [comparisonData, setComparisonData] = useState(null);
+  const [loadingCompare, setLoadingCompare] = useState(false);
+  const [compareError, setCompareError] = useState('');
+
+  // Create Monitor State
+  const [isCreatingMonitor, setIsCreatingMonitor] = useState(false);
+  const [createMonitorError, setCreateMonitorError] = useState('');
+
+  // Last verified telemetry timestamp
   const [lastVerified, setLastVerified] = useState(new Date().toISOString());
 
-  // Fetch initial tracked products on mount
+  // Load monitors list on initial mount
   useEffect(() => {
-    fetchProductList();
+    fetchMonitors();
   }, []);
 
-  const fetchProductList = async () => {
-    setLoadingProducts(true);
+  const fetchMonitors = async () => {
+    setLoadingMonitors(true);
     try {
-      const data = await getProducts();
-      if (data.success && Array.isArray(data.data)) {
-        setProducts(data.data);
-        // If items exist, get latest updatedAt for lastVerified
-        if (data.data.length > 0) {
-          const latestTime = data.data.reduce((latest, item) => {
-            const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
-            return itemTime > latest ? itemTime : latest;
-          }, 0);
-          if (latestTime > 0) {
-            setLastVerified(new Date(latestTime).toISOString());
-          }
-        }
-        // If no product is currently selected and items exist, select the first one
-        if (!selectedProduct && data.data.length > 0) {
-          handleSelectProduct(data.data[0]._id);
+      const res = await getMonitors();
+      if (res.success && Array.isArray(res.monitors)) {
+        setMonitors(res.monitors);
+        if (typeof res.recentChangesCount === 'number') {
+          setRecentChangesCount(res.recentChangesCount);
         }
       }
     } catch (err) {
-      console.error('Failed to fetch products:', err);
+      console.warn('Could not fetch monitors from backend:', err.message);
     } finally {
-      setLoadingProducts(false);
+      setLoadingMonitors(false);
     }
   };
 
-  const handleScrape = async (url) => {
-    setLoadingScrape(true);
-    setError('');
+  const handleSelectMonitor = async (id) => {
+    setSelectedMonitorId(id);
+    setLoadingMonitorDetail(true);
+    setLastCheckResult(null);
+    setCurrentView('detail');
 
     try {
-      const res = await scrapeProduct(url);
+      const res = await getMonitorById(id);
+      if (res.success && res.monitor) {
+        setSelectedMonitorData(res);
+      }
+    } catch (err) {
+      console.error('Failed to fetch monitor details:', err);
+    } finally {
+      setLoadingMonitorDetail(false);
+    }
+  };
+
+  const handleCheckMonitor = async (id) => {
+    setCheckingMonitorId(id);
+    setLastCheckResult(null);
+
+    try {
+      const res = await checkMonitor(id);
       if (res.success) {
-        setSelectedProduct(res.product);
-        setPriceChange(res.priceChange || null);
+        setCheckResultsMap((prev) => ({ ...prev, [id]: res }));
+        setLastCheckResult(res);
         setLastVerified(new Date().toISOString());
 
-        // Refresh product list and update selection
-        const listData = await getProducts();
-        if (listData.success && Array.isArray(listData.data)) {
-          setProducts(listData.data);
+        // If currently viewing details for this monitor, refresh detail state
+        if (selectedMonitorId === id || currentView === 'detail') {
+          const updatedDetail = await getMonitorById(id);
+          if (updatedDetail.success) {
+            setSelectedMonitorData(updatedDetail);
+          }
         }
-      } else {
-        setError(res.message || 'Failed to scrape product.');
+
+        // Refresh global monitors list
+        fetchMonitors();
       }
     } catch (err) {
-      console.error('Scrape error:', err);
-      const apiMsg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        'An error occurred while triggering the scraper.';
-      setError(apiMsg);
+      console.error('Failed checking monitor:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Check failed';
+      setCheckResultsMap((prev) => ({
+        ...prev,
+        [id]: { error: errMsg, changes: [] },
+      }));
     } finally {
-      setLoadingScrape(false);
+      setCheckingMonitorId(null);
     }
   };
 
-  const handleSelectProduct = async (id) => {
+  const handleDeleteMonitor = async (id) => {
     try {
-      const res = await getProductById(id);
-      if (res.success && res.data) {
-        setSelectedProduct(res.data);
-        // Reset or clear transient priceChange banner if switching manually
-        setPriceChange(null);
+      const res = await deleteMonitor(id);
+      if (res.success) {
+        if (selectedMonitorId === id) {
+          setSelectedMonitorId(null);
+          setSelectedMonitorData(null);
+          setCurrentView('dashboard');
+        }
+        await fetchMonitors();
       }
     } catch (err) {
-      console.error('Failed to fetch product details:', err);
+      console.error('Failed to delete monitor:', err);
+      alert(err.response?.data?.message || err.message || 'Failed to delete monitor');
+    }
+  };
+
+  const handleCreateMonitor = async (name, urls) => {
+    setIsCreatingMonitor(true);
+    setCreateMonitorError('');
+
+    try {
+      const res = await createMonitor(name, urls);
+      if (res.success && res.monitor) {
+        setLastVerified(new Date().toISOString());
+        await fetchMonitors();
+        // Immediately view the newly created monitor
+        handleSelectMonitor(res.monitor._id);
+      } else {
+        setCreateMonitorError(res.message || 'Failed to create monitor.');
+      }
+    } catch (err) {
+      console.error('Create monitor error:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to create monitor.';
+      setCreateMonitorError(msg);
+    } finally {
+      setIsCreatingMonitor(false);
+    }
+  };
+
+  const handleOneTimeCompare = async (urls) => {
+    setLoadingCompare(true);
+    setCompareError('');
+
+    try {
+      const res = await compareProducts(urls);
+      if (res.success && Array.isArray(res.products)) {
+        setComparisonData(res);
+        setLastVerified(new Date().toISOString());
+      } else {
+        setCompareError(res.message || 'Failed to compare competitor products.');
+      }
+    } catch (err) {
+      console.error('Comparison error:', err);
+      const msg = err.response?.data?.message || err.message || 'Comparison failed.';
+      setCompareError(msg);
+    } finally {
+      setLoadingCompare(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Header */}
-      <Header />
+    <div className="min-h-screen bg-black text-neutral-100 flex flex-col font-sans bg-grid-minimal selection:bg-white selection:text-black">
+      {/* Top Header & Navigation */}
+      <Header
+        currentView={currentView}
+        onNavigate={(view) => {
+          setCurrentView(view);
+          if (view === 'dashboard') {
+            fetchMonitors();
+          }
+        }}
+      />
 
-      {/* Main Dashboard Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        {/* Scrape Form Section */}
-        <ScrapeForm
-          onScrape={handleScrape}
-          loading={loadingScrape}
-          error={error}
-        />
+      {/* Main App Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+        {/* VIEW 1: Dashboard (Default) */}
+        {currentView === 'dashboard' && (
+          <DashboardView
+            monitors={monitors}
+            recentChangesCount={recentChangesCount}
+            loading={loadingMonitors}
+            onRefresh={fetchMonitors}
+            onSelectMonitor={handleSelectMonitor}
+            onCheckMonitor={handleCheckMonitor}
+            onDeleteMonitor={handleDeleteMonitor}
+            onNavigateToAdd={() => setCurrentView('add-monitor')}
+            checkingMonitorId={checkingMonitorId}
+            checkResultsMap={checkResultsMap}
+          />
+        )}
 
-        {/* Scraper Health & Self-Healing Section */}
-        <ScraperHealth lastVerified={lastVerified} />
+        {/* VIEW 2: Monitor Detail Page */}
+        {currentView === 'detail' && (
+          <MonitorDetailView
+            monitorData={selectedMonitorData}
+            onBack={() => {
+              setCurrentView('dashboard');
+              fetchMonitors();
+            }}
+            onCheckMonitor={handleCheckMonitor}
+            onDeleteMonitor={handleDeleteMonitor}
+            isChecking={checkingMonitorId === selectedMonitorId}
+            lastCheckResult={lastCheckResult}
+          />
+        )}
 
-        {/* Dashboard Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* Left / Main Details (2 cols on large screens) */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Price Change Analytics Banner */}
-            {priceChange && <PriceChangeCard priceChange={priceChange} />}
-
-            {/* Selected Product Card */}
-            {selectedProduct ? (
-              <ProductCard product={selectedProduct} />
-            ) : (
-              <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-12 text-center text-slate-400">
-                <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-500" />
-                <h3 className="text-base font-semibold text-slate-200">No Product Selected</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Submit an Amazon link above or choose a tracked product from the sidebar list.
+        {/* VIEW 3: Add Monitor Deck */}
+        {currentView === 'add-monitor' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                  <PlusCircle className="w-6 h-6 text-white" />
+                  <span>Add Competitor Monitor</span>
+                </h1>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Set up recurring multi-source tracking, automated historical snapshots, and price delta alerts
                 </p>
               </div>
-            )}
 
-            {/* Price History Line Chart */}
-            {selectedProduct && (
-              <PriceHistoryChart
-                priceHistory={selectedProduct.priceHistory}
-                currency={selectedProduct.currency}
-              />
-            )}
-          </div>
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-semibold text-neutral-300 border border-neutral-800 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Dashboard</span>
+              </button>
+            </div>
 
-          {/* Right Sidebar: Tracked Products List (1 col) */}
-          <div className="lg:col-span-1">
-            <ProductList
-              products={products}
-              selectedProductId={selectedProduct?._id}
-              onSelectProduct={handleSelectProduct}
-              onRefresh={fetchProductList}
-              loading={loadingProducts}
+            <CompareForm
+              mode="add-monitor"
+              onCompare={handleOneTimeCompare}
+              onCreateMonitor={handleCreateMonitor}
+              isLoading={loadingCompare}
+              isCreatingMonitor={isCreatingMonitor}
+              error={createMonitorError || compareError}
             />
           </div>
+        )}
 
-        </div>
+        {/* VIEW 4: Compare Products (One-Time Scrape Deck) */}
+        {currentView === 'compare' && (
+          <div className="space-y-8 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                  <GitCompare className="w-6 h-6 text-white" />
+                  <span>Instant Competitor Comparison</span>
+                </h1>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Run ad-hoc competitor scrapes and optionally save as a continuous monitor
+                </p>
+              </div>
 
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-semibold text-neutral-300 border border-neutral-800 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Dashboard</span>
+              </button>
+            </div>
+
+            {/* Ingestion & Comparison Form */}
+            <CompareForm
+              mode="compare"
+              onCompare={handleOneTimeCompare}
+              onCreateMonitor={handleCreateMonitor}
+              isLoading={loadingCompare}
+              isCreatingMonitor={isCreatingMonitor}
+              error={compareError}
+            />
+
+            {/* Comparison Results */}
+            {comparisonData && (
+              <div className="space-y-8 animate-fadeIn">
+                {/* Executive Summary */}
+                <ComparisonSummary data={comparisonData} />
+
+                {/* Storefront Breakdown */}
+                <CompetitorGrid
+                  products={comparisonData.products}
+                  lowestPrice={comparisonData.lowestPrice}
+                  cheapestSource={comparisonData.cheapestSource}
+                />
+
+                {/* Price Chart & Data Matrix */}
+                <PriceComparisonChart
+                  products={comparisonData.products}
+                  lowestPrice={comparisonData.lowestPrice}
+                  cheapestSource={comparisonData.cheapestSource}
+                />
+
+                {/* Start Monitoring Callout */}
+                <div className="bw-panel-highlight rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      <span>Track this Product Over Time</span>
+                    </h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      Save this comparison as a live monitor to get automated snapshots and price change alerts.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const detectedName = comparisonData.products[0]?.brand
+                        ? `${comparisonData.products[0].brand} Product`
+                        : 'Monitored Product';
+                      const urls = comparisonData.products.map((p) => p.productUrl).filter(Boolean);
+                      handleCreateMonitor(detectedName, urls);
+                    }}
+                    disabled={isCreatingMonitor}
+                    className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold uppercase tracking-wider shadow-md transition"
+                  >
+                    <PlusCircle className="w-4 h-4 stroke-[2.5]" />
+                    <span>{isCreatingMonitor ? 'Saving Monitor...' : 'Save as Live Monitor'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5. Scraper Intelligence & Architecture Telemetry */}
+        <ScraperHealth lastVerified={lastVerified} />
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        PriceWatch AI &copy; {new Date().getFullYear()} — Powered by Bright Data DCA &amp; MongoDB
+      <footer className="border-t border-neutral-800 bg-black py-6 text-center text-xs text-neutral-500 space-y-1">
+        <p className="font-semibold text-neutral-400">
+          WebPulse &copy; {new Date().getFullYear()} — Competitor Price Intelligence Powered by Self-Healing Web Scrapers
+        </p>
+        <p className="text-[11px] text-neutral-600 font-mono">
+          Powered by Bright Data Scraper Studio, Express, MongoDB &amp; React
+        </p>
       </footer>
     </div>
   );

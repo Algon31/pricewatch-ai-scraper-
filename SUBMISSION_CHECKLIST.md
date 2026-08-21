@@ -1,6 +1,6 @@
 # Into the Scrape-Verse Hackathon — Submission Checklist
 
-**Project**: PriceWatch AI  
+**Project**: WebPulse (Competitor Price Intelligence Powered by Self-Healing Web Scrapers)  
 **Event**: Into the Scrape-Verse Hackathon by WeMakeDevs & Bright Data  
 **Verification Date**: 2026-08-20  
 
@@ -10,9 +10,9 @@
 
 | Section | Status | Notes |
 | :--- | :---: | :--- |
-| **Core Scraping & Ingestion** | ✅ Complete | Bright Data DCA integration + MongoDB price history persistence |
+| **Multi-Source Scraping & Comparison** | ✅ Complete | Parallel Bright Data DCA integration across Amazon, Kamal Imaging & Fujifilm X India |
 | **Self-Healing Demonstration** | ✅ Complete | Documented real repair flow & dashboard audit event card |
-| **React Dashboard UI** | ✅ Complete | Scraper health, price change analytics, Recharts timeline, product list |
+| **React Intelligence Dashboard** | ✅ Complete | Competitor comparison cards, Recharts price comparison bar chart, summary metrics |
 | **Repository Security & Cleanliness** | ✅ Complete | `.gitignore` verified, secrets excluded, `.env.example` verified |
 | **Documentation & Deliverables** | ✅ Complete | Complete README with Mermaid architecture, API schemas & disclosures |
 | **Pre-Submission Manual Tasks** | ⏳ Pending | Video recording & final submission link pasting |
@@ -32,10 +32,18 @@
 - [x] Verified backend syntax and modules execute cleanly: `server.js` + `models/Product.js`.
 - [x] Centralized API layer configured in `frontend/src/api/config.js`.
 
-### 3. Hackathon Deliverables in `README.md`
+### 3. Reliability & Extraction Validation Layer
+- [x] **Strict Extraction Validation**: Rules enforce `source`, `productTitle`, `productUrl`, and positive `currentPrice (> 0)` on normalized output.
+- [x] **Automated Retry Loop**: Automatically retries failed or invalid scraper responses once (`MAX_SCRAPE_ATTEMPTS = 2`) with backoff delay.
+- [x] **Fault Isolation**: Individual retailer failures emit `SOURCE_FAILURE` change events and update `lastError` without interrupting other sources.
+- [x] **Self-Recovery & Snapshot Protection**: Successful recovery clears `lastError`; invalid/null data is strictly prevented from creating `PriceSnapshot` documents.
+- [x] **Automated 8-Scenario Test Suite**: Verified with `npm test` (`scripts/testReliability.js`) passing 100% of assertions.
+
+### 4. Hackathon Deliverables in `README.md`
 - [x] **Project Description & Tagline**: Clear articulation of PriceWatch AI and its value proposition.
 - [x] **Problem & Solution Statements**: Detailed real-world context on pricing volatility and scraper fragility.
 - [x] **Bright Data Scraper Studio Explanation**: Deep dive into custom collector configuration, DCA triggering, and dataset polling.
+- [x] **Reliability & Validation Layer**: Complete explanation of extraction validation, per-source retry, snapshot guards, and recovery.
 - [x] **Self-Healing Demonstration**: Accurate 7-step walkthrough of the real repair demonstrated during development.
 - [x] **System Architecture**: Complete Mermaid diagram illustrating data flow from UI to Bright Data, Amazon, and MongoDB.
 - [x] **Structured Scraper Output**: Realistic JSON output schema example documenting scraped product attributes.

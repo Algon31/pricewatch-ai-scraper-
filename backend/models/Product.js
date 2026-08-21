@@ -28,6 +28,11 @@ const productSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    source: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     productTitle: {
       type: String,
       trim: true,
@@ -65,6 +70,16 @@ const productSchema = new mongoose.Schema(
       default: null,
     },
     availability: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    image: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    sku: {
       type: String,
       trim: true,
       default: '',

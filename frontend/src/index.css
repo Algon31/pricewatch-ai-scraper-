@@ -1,7 +1,59 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
-    @apply bg-slate-900 text-slate-100 min-h-screen font-sans antialiased;
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
   }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #000000;
+    color: #EDEDED;
+    min-height: 100vh;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Minimalist Monochrome Grid Pattern */
+.bg-grid-minimal {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* High-contrast Monochrome Glass Panel */
+.bw-panel {
+  position: relative;
+  background-color: #0A0A0A;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.8);
+}
+
+.bw-panel-highlight {
+  position: relative;
+  background-color: #0F0F0F;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 30px rgba(0, 0, 0, 0.9);
+}
+
+/* Crisp Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #404040;
 }
