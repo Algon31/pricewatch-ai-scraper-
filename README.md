@@ -462,7 +462,7 @@ npm run dev
 
 ## 🎥 Demo
 
-- **Live Demo / Walkthrough Video**: [Insert Demo Video Link Here - YouTube / Loom / Drive]
+- **Live Demo / Walkthrough Video**: [\[Insert Demo Video Link Here - YouTube / Loom / Drive\]](https://youtu.be/eyP_4fPuh5A)
 - **Hackathon Submission**: Into the Scrape-Verse Hackathon (WeMakeDevs & Bright Data)
 
 ---
