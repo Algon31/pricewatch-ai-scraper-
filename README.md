@@ -202,7 +202,7 @@ flowchart TD
 
     DCA_API -->|Poll Job Status & Fetch Output| PollingEngine
     PollingEngine -->|Raw Scraped Data| ValidationLayer
-    ValidationLayer -->|Retry on Failure (Max 2 Attempts)| DCA_API
+    ValidationLayer -->|"Retry on Failure (Max 2 Attempts)"| DCA_API
     ValidationLayer -->|Validated Standard Product Data| DeltaEngine
     
     DeltaEngine -->|Save Monitor & Analytics| MonitorsCollection
